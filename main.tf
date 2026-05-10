@@ -7,14 +7,11 @@ terraform {
     }
   }
 
-  # สำหรับ prod ใช้ S3 backend แทน local state
-  # backend "s3" {
-  #   bucket         = "your-terraform-state-bucket"
-  #   key            = "metabase/terraform.tfstate"
-  #   region         = "ap-southeast-1"
-  #   encrypt        = true
-  #   dynamodb_table = "terraform-locks"
-  # }
+  backend "s3" {
+    bucket = "metabase-tfstate-483921"
+    key    = "metabase/terraform.tfstate"
+    region = "ap-southeast-1"
+  }
 }
 
 provider "aws" {
