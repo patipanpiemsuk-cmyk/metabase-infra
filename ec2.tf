@@ -46,7 +46,7 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 resource "aws_instance" "metabase" {
   ami                    = data.aws_ami.amazon_linux.id
   #instance_type          = "t2.micro"   # Free Tier
-  instance_type          = "t3.small" # เสียเงิน 15 บาท / hr
+  instance_type          = "t3.small" # เสียเงิน 15 บาท / เดือน
   key_name               = aws_key_pair.metabase.key_name
   subnet_id              = aws_subnet.public.id
   vpc_security_group_ids = [aws_security_group.metabase.id]
