@@ -31,12 +31,14 @@ jobs:
 
       - name: Terraform Plan
         env:
-          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }} 
+          TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_SSH_PUBLIC_KEY }}
         run: terraform plan
 
       - name: Terraform Apply
         env:
           TF_VAR_db_password: ${{ secrets.TF_VAR_DB_PASSWORD }}
+          TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_SSH_PUBLIC_KEY }}
         run: terraform apply -auto-approve
 
       - name: Show Metabase URL

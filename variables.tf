@@ -24,3 +24,7 @@ variable "allowed_cidr" {
   description = "IP ที่อนุญาตเข้า port 3000"
   default     = "0.0.0.0/0"
 }
+
+variable "ssh_public_key" {
+  description = "SSH public key content"
+}

@@ -22,7 +22,11 @@ provider "aws" {
 }
 
 # Upload SSH public key ไปยัง AWS
+# resource "aws_key_pair" "metabase" {
+#   key_name   = var.key_name
+#   public_key = file("~/.ssh/metabase-key.pub")
+# }
 resource "aws_key_pair" "metabase" {
   key_name   = var.key_name
-  public_key = file("~/.ssh/metabase-key.pub")
+  public_key = var.ssh_public_key
 }
