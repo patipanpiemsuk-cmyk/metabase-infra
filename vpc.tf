@@ -22,20 +22,20 @@ resource "aws_subnet" "private_a" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.2.0/24"
   availability_zone = "${var.aws_region}a"
-  tags = { Name = "metabase-private-a" }
+  tags              = { Name = "metabase-private-a" }
 }
 
 resource "aws_subnet" "private_b" {
   vpc_id            = aws_vpc.main.id
   cidr_block        = "10.0.3.0/24"
   availability_zone = "${var.aws_region}b"
-  tags = { Name = "metabase-private-b" }
+  tags              = { Name = "metabase-private-b" }
 }
 
 # Internet Gateway
 resource "aws_internet_gateway" "main" {
   vpc_id = aws_vpc.main.id
-  tags = { Name = "metabase-igw" }
+  tags   = { Name = "metabase-igw" }
 }
 
 # Route Table สำหรับ Public Subnet
@@ -59,5 +59,5 @@ resource "aws_route_table_association" "public" {
 resource "aws_db_subnet_group" "main" {
   name       = "metabase-db-subnet-group"
   subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
-  tags = { Name = "metabase-db-subnet-group" }
+  tags       = { Name = "metabase-db-subnet-group" }
 }

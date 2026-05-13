@@ -2,7 +2,7 @@
 resource "aws_ssm_parameter" "db_password" {
   name        = "/metabase/db_password"
   description = "Metabase database password"
-  type        = "SecureString"  # เข้ารหัสด้วย KMS อัตโนมัติ
+  type        = "SecureString" # เข้ารหัสด้วย KMS อัตโนมัติ
   value       = var.db_password
 
   tags = { Name = "metabase-db-password" }
