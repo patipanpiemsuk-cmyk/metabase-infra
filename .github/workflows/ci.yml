@@ -1,6 +1,8 @@
 name: CI — Validate Terraform
 
 on:
+  push:
+    branches: [dev]
   pull_request:
     branches: [main, qa, dev]
 
