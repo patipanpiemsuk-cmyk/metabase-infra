@@ -22,3 +22,5 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
+
+        # test ci on dev
