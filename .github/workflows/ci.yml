@@ -1,8 +1,10 @@
 name: CI — Validate Terraform
 
 on:
+  push:
+    branches: [dev]
   pull_request:
-    branches: [main, QA, DEV]
+    branches: [main, qa, dev]
 
 jobs:
   validate:
@@ -22,5 +24,3 @@ jobs:
 
       - name: Terraform Validate
         run: terraform validate
-
-        # test ci on dev
