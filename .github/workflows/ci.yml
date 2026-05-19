@@ -2,7 +2,7 @@ name: CI — Validate Terraform
 
 on:
   pull_request:
-    branches: [main, QA, DEV]
+    branches: [main, qa, dev]
 
 jobs:
   validate:
