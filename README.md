@@ -38,11 +38,12 @@ Internet → Internet Gateway → EC2 t3.small (Metabase on Docker)
 ├── variables.tf         # ตัวแปรทั้งหมด
 ├── outputs.tf           # Output หลัง deploy
 ├── user_data.sh         # Script ติดตั้ง Docker และรัน Metabase
+├── diagrams/            # Architecture และ CI/CD pipeline diagrams
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml       # ตรวจสอบ Terraform code เมื่อเปิด PR
-│       ├── cd.yml       # Deploy infrastructure
-│       └── destroy.yml  # ลบ infrastructure ทั้งหมด
+│       ├── ci.yml       # ตรวจสอบ Terraform code อัตโนมัติ
+│       ├── cd.yml       # Deploy infrastructure (กดเองผ่าน Actions)
+│       └── destroy.yml  # ลบ infrastructure ทั้งหมด (กดเองผ่าน Actions)
 └── README.md
 ```
 
@@ -64,16 +65,39 @@ Internet → Internet Gateway → EC2 t3.small (Metabase on Docker)
 | `TF_VAR_DB_PASSWORD` | Password สำหรับ PostgreSQL |
 | `SSH_PUBLIC_KEY` | SSH public key content สำหรับเข้า EC2 |
 
+### Branching Strategy
+
+repo แบ่งเป็น 3 branch หลัก:
+
+| Branch | หน้าที่ | CI | CD |
+|---|---|---|---|
+| `dev` | development | รันอัตโนมัติทุกครั้งที่ push | ไม่ deploy |
+| `qa` | testing ก่อน release | รันเมื่อเปิด PR เข้า qa | ไม่ deploy |
+| `main` | production | รันเมื่อเปิด PR เข้า main + ต้อง approve | กดเองผ่าน Actions |
+
+**flow การทำงาน:**
+
+```
+แก้ไข Terraform → push เข้า dev → CI รันอัตโนมัติ
+    ↓
+เปิด PR dev → qa → CI รัน → merge
+    ↓
+เปิด PR qa → main → CI รัน → approve → merge
+    ↓
+ไปที่ Actions → CD — Deploy Infrastructure → Run workflow
+    ↓
+Metabase พร้อมใช้งาน (URL แสดงใน Job Summary)
+```
+
 ### วิธี Deploy
 
-**ผ่าน GitHub Actions (แนะนำ):**
+1. merge code เข้า main ผ่าน PR
+2. ไปที่ Actions → **CD — Deploy Infrastructure**
+3. กด **Run workflow**
+4. รอประมาณ 15-20 นาที (RDS ใช้เวลานานสุด)
+5. URL ของ Metabase จะแสดงใน Job Summary หลัง deploy เสร็จ
 
-1. ไปที่ Actions → CD — Deploy Infrastructure
-2. กด Run workflow
-3. รอประมาณ 15-20 นาที (RDS ใช้เวลานานสุด)
-4. URL ของ Metabase จะแสดงใน Job Summary หลัง deploy เสร็จ
-
-**ผ่านเครื่องตัวเอง:**
+**หรือรันบนเครื่องตัวเองโดยตรง:**
 
 ```bash
 terraform init
@@ -83,7 +107,7 @@ terraform apply
 
 ### วิธีทดสอบ
 
-1. เปิด browser ไปที่ URL จาก output เช่น `http://<public-ip>:3000`
+1. เปิด browser ไปที่ URL จาก Job Summary เช่น `http://<public-ip>:3000`
 2. รอประมาณ 3-5 นาทีให้ Metabase boot ครั้งแรก
 3. ตั้งค่า admin account
 4. เชื่อมต่อ PostgreSQL โดยใช้ค่าดังนี้:
@@ -95,16 +119,17 @@ terraform apply
 
 ### วิธีลบ Infrastructure
 
-ไปที่ Actions → Destroy Infrastructure → Run workflow
+ไปที่ Actions → **Destroy Infrastructure** → **Run workflow**
 
 ### Assumptions
 
 - ใช้ region `ap-southeast-1` (Singapore) เพราะใกล้ไทยและ latency ต่ำ
 - ใช้ EC2 `t3.small` เพราะ Metabase ต้องการ RAM อย่างน้อย 1.5GB ขึ้นไป `t2.micro` ไม่เพียงพอ
-- `skip_final_snapshot = true` เหมาะสำหรับ dev/demo เท่านั้น
-- SSH port 22 เปิด `0.0.0.0/0` เพื่อความสะดวกในการ demo production ควรจำกัด IP หรือใช้ SSM Session Manager
+- `skip_final_snapshot = true` เหมาะสำหรับ dev/demo เท่านั้น production ควรเปลี่ยนเป็น false
+- SSH port 22 เปิด `0.0.0.0/0` เพื่อความสะดวกในการ demo production ควรใช้ SSM Session Manager
 - ไม่มี HTTPS เข้าถึงผ่าน port 3000 ตรงๆ production ควรใช้ ALB + ACM Certificate
 - Terraform state เก็บใน S3 bucket เพื่อให้ทั้ง local และ GitHub Actions ใช้ state เดียวกัน
+- CD deploy ใช้วิธีกดเองแทน auto deploy เพื่อป้องกันการเปลี่ยนแปลง infrastructure โดยไม่ตั้งใจ
 
 ### สิ่งที่ควรเปลี่ยนสำหรับ Production
 
@@ -121,9 +146,8 @@ terraform apply
 ---
 
 ## ข้อที่ 2: Architecture & CI/CD Pipeline
-> หมายเหตุ: ข้อที่ 2 เป็น architecture design ตามโจทย์ที่กำหนด
-> ออกแบบโดยอ้างอิงจากการศึกษา AWS best practices และ
-> ประสบการณ์ด้าน infrastructure จากการทำงานที่ผ่านมา
+
+> หมายเหตุ: ข้อที่ 2 เป็น architecture design ตามโจทย์ที่กำหนด ไม่ได้ implement จริงทั้งหมด
 
 ### ภาพรวม Architecture
 
@@ -149,22 +173,21 @@ ALB (Application Load Balancer)
 
 ### การแบ่ง Environment
 
-ระบบแบ่งเป็น 3 environment โดยแต่ละ environment มี infrastructure และ config แยกกันชัดเจน
-
 **Dev**
-- Deploy อัตโนมัติเมื่อ push ไปยัง `feature/*` branch
+- CI รันอัตโนมัติเมื่อ push ไปยัง `dev` branch
 - Infrastructure ขนาดเล็ก ประหยัดค่าใช้จ่าย
 - ใช้สำหรับ developer ทดสอบ feature ใหม่
 - Config จาก SSM `/dev/*`
 
-**Staging**
-- Deploy อัตโนมัติเมื่อ merge เข้า `main` branch
+**QA/Staging**
+- CI รันเมื่อเปิด PR เข้า `qa` branch
 - Infrastructure ใกล้เคียง production
 - ใช้สำหรับ QA ทดสอบก่อน release
 - Config จาก SSM `/staging/*`
 
 **Production**
-- Deploy เมื่อสร้าง tag รูปแบบ `v*.*.*` และผ่าน manual approve
+- CI รันเมื่อเปิด PR เข้า `main` และต้องมี manual approve
+- CD deploy โดยกดเองผ่าน GitHub Actions
 - Infrastructure Multi-AZ พร้อม Auto-scaling
 - Config จาก SSM `/prod/*` encrypted ด้วย KMS
 
@@ -179,23 +202,28 @@ GitHub Actions trigger
     ├── lint
     ├── unit tests
     ├── build Docker image
-    ├── push image ไปยัง ECR (tag: git-sha)
-    └── deploy ตาม branch
-         ├── feature/* → DEV (auto)
-         ├── main      → STAGING (auto + integration tests)
-         └── v*.*.*    → PROD (manual approve → rolling deploy)
+    └── push image ไปยัง ECR (tag: git-sha)
+
+deploy ตาม branch:
+    ├── push dev   → CI validate อัตโนมัติ (ไม่ deploy)
+    ├── PR → qa    → CI validate → merge → QA environment
+    └── PR → main  → CI validate → approve → merge → กด CD deploy PROD
 ```
 
-**Infrastructure Pipeline (แยกจาก App Pipeline)**
-
-Terraform รัน workflow แยกต่างหากจาก application เพื่อควบคุมการเปลี่ยนแปลง infrastructure ได้ชัดเจน
+**Infrastructure Pipeline**
 
 ```
-แก้ไข Terraform code → เปิด PR → CI validate + plan
-    ↓ (merge to main)
-terraform apply → staging
-    ↓ (manual approve)
-terraform apply → production
+แก้ไข Terraform code
+    ↓
+push เข้า dev → CI รัน terraform fmt + validate อัตโนมัติ
+    ↓
+PR dev → qa → CI รัน → merge
+    ↓
+PR qa → main → CI รัน → manual approve → merge
+    ↓
+กด CD workflow → terraform apply → deploy production
+    ↓
+กด Destroy workflow → terraform destroy → ลบทั้งหมด
 ```
 
 ### การจัดการ Configuration และ Secret
@@ -224,7 +252,7 @@ terraform apply → production
 
 **การเฝ้าระวัง**
 - CloudWatch เก็บ metrics และ logs ทุก service retention 30 วัน
-- Prometheus + Grafana สำหรับ real-time monitoring และ dashboard (ใช้ร่วมกับ CloudWatch ได้)
+- Prometheus + Grafana สำหรับ real-time monitoring และ dashboard
 - ELK Stack สำหรับ centralized logging และ log analysis
 - ALB Health Check ตรวจสอบ `GET /health` ทุก 30 วินาที
 
@@ -244,19 +272,13 @@ terraform apply → production
 ### การ Promote ระหว่าง Environment
 
 ```
-สร้าง feature branch และเปิด PR
+push เข้า dev → CI validate อัตโนมัติ
     ↓
-CI ตรวจสอบ lint, test, build ผ่านทั้งหมด
+เปิด PR dev → qa → CI รัน → merge → QA ทดสอบ
     ↓
-Code review ผ่าน → merge เข้า main
+เปิด PR qa → main → CI รัน → manual approve → merge
     ↓
-Auto deploy ไปยัง STAGING
-    ↓
-Integration tests + QA ทดสอบ
-    ↓
-QA sign-off → สร้าง release tag เช่น v1.2.0
-    ↓
-Manual approve → deploy ไปยัง PRODUCTION
+กด CD workflow → deploy PRODUCTION
     ↓
 Monitor error rate และ latency หลัง deploy
     ↓
