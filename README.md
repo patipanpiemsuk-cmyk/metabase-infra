@@ -1,4 +1,4 @@
-# Coraline Challenge — Infrastructure & Architecture
+# Infrastructure & Architecture
 
 ---
 
